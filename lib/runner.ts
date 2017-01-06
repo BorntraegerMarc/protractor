@@ -1,20 +1,19 @@
 import {EventEmitter} from 'events';
 import * as q from 'q';
+import {promise as wdpromise, Session} from 'selenium-webdriver';
 import * as util from 'util';
 
 import {ProtractorBrowser} from './browser';
 import {Config} from './config';
-import {AttachSession, BrowserStack, Direct, Hosted, Local, Mock, Sauce} from './driverProviders';
-import {DriverProvider} from './driverProviders';
+import {buildDriverProvider, DriverProvider} from './driverProviders';
 import {Logger} from './logger';
 import {Plugins} from './plugins';
 import {protractor} from './ptor';
 import * as helper from './util';
 
-declare var global: any;
-declare var process: any;
+declare let global: any;
+declare let process: any;
 
-var webdriver = require('selenium-webdriver');
 let logger = new Logger('runner');
 /*
  * Runner is responsible for starting the execution of a test run and triggering
@@ -45,7 +44,7 @@ export class Runner extends EventEmitter {
 
     if (config.nodeDebug) {
       process['_debugProcess'](process.pid);
-      let flow = webdriver.promise.controlFlow();
+      let flow = wdpromise.controlFlow();
 
       flow.execute(() => {
         let nodedebug = require('child_process').fork('debug', ['localhost:5858']);
@@ -100,25 +99,7 @@ export class Runner extends EventEmitter {
    */
   loadDriverProvider_(config: Config) {
     this.config_ = config;
-    if (this.config_.directConnect) {
-      this.driverprovider_ = new Direct(this.config_);
-    } else if (this.config_.seleniumAddress) {
-      if (this.config_.seleniumSessionId) {
-        this.driverprovider_ = new AttachSession(this.config_);
-      } else {
-        this.driverprovider_ = new Hosted(this.config_);
-      }
-    } else if (this.config_.browserstackUser && this.config_.browserstackKey) {
-      this.driverprovider_ = new BrowserStack(this.config_);
-    } else if (this.config_.sauceUser && this.config_.sauceKey) {
-      this.driverprovider_ = new Sauce(this.config_);
-    } else if (this.config_.seleniumServerJar) {
-      this.driverprovider_ = new Local(this.config_);
-    } else if (this.config_.mockSelenium) {
-      this.driverprovider_ = new Mock(this.config_);
-    } else {
-      this.driverprovider_ = new Local(this.config_);
-    }
+    this.driverprovider_ = buildDriverProvider(this.config_);
   }
 
   /**
@@ -126,17 +107,16 @@ export class Runner extends EventEmitter {
    * @private
    * @param {int} Standard unix exit code
    */
-  exit_ = function(exitCode: number):
-      any {
-        return helper.runFilenameOrFn_(this.config_.configDir, this.config_.onCleanUp, [exitCode])
-            .then((returned): number | any => {
-              if (typeof returned === 'number') {
-                return returned;
-              } else {
-                return exitCode;
-              }
-            });
-      }
+  exit_ = function(exitCode: number): any {
+    return helper.runFilenameOrFn_(this.config_.configDir, this.config_.onCleanUp, [exitCode])
+        .then((returned): number | any => {
+          if (typeof returned === 'number') {
+            return returned;
+          } else {
+            return exitCode;
+          }
+        });
+  };
 
   /**
    * Getter for the Runner config object
@@ -152,7 +132,7 @@ export class Runner extends EventEmitter {
    * @return {Object} WebDriver control flow.
    */
   controlFlow(): any {
-    return webdriver.promise.controlFlow();
+    return wdpromise.controlFlow();
   }
 
   /**
@@ -166,7 +146,6 @@ export class Runner extends EventEmitter {
     protractor.$$ = browser_.$$;
     protractor.element = browser_.element;
     protractor.by = protractor.By = ProtractorBrowser.By;
-    protractor.wrapDriver = ProtractorBrowser.wrapDriver;
     protractor.ExpectedConditions = browser_.ExpectedConditions;
 
     if (!this.config_.noGlobals) {
@@ -204,11 +183,17 @@ export class Runner extends EventEmitter {
    * @public
    */
   createBrowser(plugins: any): any {
-    var config = this.config_;
-    var driver = this.driverprovider_.getNewDriver();
+    let config = this.config_;
+    let driver = this.driverprovider_.getNewDriver();
 
-    var browser_ = ProtractorBrowser.wrapDriver(
-        driver, config.baseUrl, config.rootElement, config.untrackOutstandingTimeouts);
+    let blockingProxyUrl: string;
+    if (config.useBlockingProxy) {
+      blockingProxyUrl = this.driverprovider_.getBPUrl();
+    }
+
+    let browser_ = new ProtractorBrowser(
+        driver, config.baseUrl, config.rootElement, config.untrackOutstandingTimeouts,
+        blockingProxyUrl);
 
     browser_.params = config.params;
     if (plugins) {
@@ -223,9 +208,6 @@ export class Runner extends EventEmitter {
     if (config.debuggerServerPort) {
       browser_.debuggerServerPort = config.debuggerServerPort;
     }
-    if (config.useAllAngular2AppRoots) {
-      browser_.useAllAngular2AppRoots();
-    }
     if (config.ng12Hybrid) {
       browser_.ng12Hybrid = config.ng12Hybrid;
     }
@@ -233,7 +215,7 @@ export class Runner extends EventEmitter {
     browser_.ready = driver.manage().timeouts().setScriptTimeout(config.allScriptsTimeout);
 
     browser_.getProcessedConfig = () => {
-      return webdriver.promise.fulfilled(config);
+      return wdpromise.fulfilled(config);
     };
 
     browser_.forkNewDriverInstance = (opt_useSameUrl: boolean, opt_copyMockModules: boolean) => {
@@ -298,7 +280,7 @@ export class Runner extends EventEmitter {
           this.setupGlobals_(browser_);
           return browser_.ready.then(browser_.getSession)
               .then(
-                  (session: webdriver.Session) => {
+                  (session: Session) => {
                     logger.debug(
                         'WebDriver session successfully started with capabilities ' +
                         util.inspect(session.getCapabilities()));
@@ -340,7 +322,7 @@ export class Runner extends EventEmitter {
           }
 
           if (this.config_.restartBrowserBetweenTests) {
-            var restartDriver = () => {
+            let restartDriver = () => {
               browser_.restart();
             };
             this.on('testPass', restartDriver);
@@ -392,7 +374,7 @@ export class Runner extends EventEmitter {
           // 9) Exit process
         })
         .then(() => {
-          var exitCode = testPassed ? 0 : 1;
+          let exitCode = testPassed ? 0 : 1;
           return this.exit_(exitCode);
         })
         .fin(() => {

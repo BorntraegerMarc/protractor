@@ -1,9 +1,6 @@
+import {error as wderror} from 'selenium-webdriver';
 import {ProtractorBrowser} from './browser';
 import {ElementFinder} from './element';
-
-let webdriver = require('selenium-webdriver');
-
-declare var global: any;
 
 /**
  * Represents a library of canned expected conditions that are useful for
@@ -88,7 +85,7 @@ export class ProtractorExpectedConditions {
       if (fns.length === 0) {
         return defaultRet;
       }
-      var fn = fns[0];
+      let fn = fns[0];
       return fn().then((bool: boolean): boolean => {
         if (bool === defaultRet) {
           return self.logicalChain_(defaultRet, fns.slice(1))();
@@ -163,7 +160,7 @@ export class ProtractorExpectedConditions {
                 return true;
               },
           (err: any) => {
-            if (err.code == webdriver.error.ErrorCode.NO_SUCH_ALERT) {
+            if (err instanceof wderror.NoSuchAlertError) {
               return false;
             } else {
               throw err;
@@ -208,7 +205,7 @@ export class ProtractorExpectedConditions {
    *     representing whether the text is present in the element.
    */
   textToBePresentInElement(elementFinder: ElementFinder, text: string): Function {
-    var hasText = () => {
+    let hasText = () => {
       return elementFinder.getText().then((actualText: string): boolean => {
         // MSEdge does not properly remove newlines, which causes false
         // negatives
@@ -235,7 +232,7 @@ export class ProtractorExpectedConditions {
    *     representing whether the text is present in the element's value.
    */
   textToBePresentInElementValue(elementFinder: ElementFinder, text: string): Function {
-    var hasText = () => {
+    let hasText = () => {
       return elementFinder.getAttribute('value').then((actualText: string): boolean => {
         return actualText.indexOf(text) > -1;
       });

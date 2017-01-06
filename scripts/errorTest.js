@@ -19,6 +19,12 @@ var checkLogs = function(output, messages) {
  *Below are exit failure tests*
  ******************************/
 
+runProtractor = spawn('node',
+    ['bin/protractor', 'example/conf.js', '--foobar', 'foobar']);
+output = runProtractor.stderr.toString();
+messages = ['Error: Found extra flags: foobar'];
+checkLogs(output, messages);
+
 // assert authentication error for sauce labs
 runProtractor = spawn('node',
     ['bin/protractor', 'spec/errorTest/sauceLabsAuthentication.js']);
@@ -43,4 +49,11 @@ output = runProtractor.stdout.toString();
 messages = [
   'Cannot run in debug mode with multiCapabilities, count > 1, or sharding',
   'Process exited with error code ' + exitCodes.ConfigError.CODE];
+checkLogs(output, messages);
+
+runProtractor = spawn('node',
+    ['bin/protractor', 'spec/errorTest/getMultiCapabilitiesConf.js']);
+output = runProtractor.stderr.toString();
+messages = [
+  'Error: get multi capabilities failed'];
 checkLogs(output, messages);

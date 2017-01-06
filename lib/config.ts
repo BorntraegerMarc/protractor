@@ -1,6 +1,8 @@
 import {PluginConfig} from './plugins';
 
 export interface Config {
+  [key: string]: any;
+
   // ---------------------------------------------------------------------------
   // ----- How to connect to Browser Drivers -----------------------------------
   // ---------------------------------------------------------------------------
@@ -27,6 +29,13 @@ export interface Config {
    * node_modules/protractor/node_modules/webdriver-manager/selenium/<jar file>
    */
   seleniumServerJar?: string;
+
+  /**
+   * The timeout milliseconds waiting for a local standalone Selenium Server to start.
+   *
+   * default: 30000ms
+   */
+  seleniumServerStartTimeout?: number;
 
   /**
    * Can be an object which will be passed to the SeleniumServer class as args.
@@ -88,6 +97,13 @@ export interface Config {
    */
   webDriverProxy?: string;
 
+  /**
+   * If specified, connect to webdriver through a proxy that manages client-side
+   * synchronization. Blocking Proxy is an experimental feature and may change
+   * without notice.
+   */
+  useBlockingProxy?: boolean;
+
   // ---- 3. To use remote browsers via Sauce Labs -----------------------------
 
   /**
@@ -106,18 +122,10 @@ export interface Config {
    *
    * To match sauce agent implementation, use
    * [HttpProxyAgent](https://github.com/TooTallNate/node-http-proxy-agent)
-   * to generate the agent or use sauceProxy as an alternative. If a
-   * sauceProxy is provided, the sauceAgent will be overridden.
+   * to generate the agent or use webDriverProxy as an alternative. If a
+   * webDriverProxy is provided, the sauceAgent will be overridden.
    */
   sauceAgent?: any;
-  /**
-   * Use sauceProxy if you are behind a corporate proxy to connect to
-   * saucelabs.com.
-   *
-   * The sauceProxy is used to generate an HTTP agent. If a sauceProxy is
-   * provided, the sauceAgent will be overridden.
-   */
-  sauceProxy?: string;
   /**
    * Use sauceBuild if you want to group test capabilites by a build ID
    */
@@ -342,8 +350,17 @@ export interface Config {
   baseUrl?: string;
 
   /**
-   * CSS Selector for the element housing the angular app - this defaults to
-   * 'body', but is necessary if ng-app is on a descendant of <body>.
+   * A CSS Selector for a DOM element within your Angular application.
+   * Protractor will attempt to automatically find your application, but it is
+   * necessary to set rootElement in certain cases.
+   *
+   * In Angular 1, Protractor will use the element your app bootstrapped to by
+   * default.  If that doesn't work, it will then search for hooks in `body` or
+   * `ng-app` elements (details here: https://git.io/v1b2r).
+   *
+   * In later versions of Angular, Protractor will try to hook into all angular
+   * apps on the page. Use rootElement to limit the scope of which apps
+   * Protractor waits for and searches within.
    */
   rootElement?: string;
 
@@ -546,30 +563,6 @@ export interface Config {
   mochaOpts?: {[key: string]: any; ui?: string; reporter?: string;};
 
   /**
-   * Options to be passed to Cucumber (when set up as a custom framework).
-   */
-  cucumberOpts?: {
-    [key: string]: any;
-    /**
-     * Require files before executing the features.
-     */
-    require?: string;
-    /**
-     * Only execute the features or scenarios with tags matching @dev.
-     * This may be an array of strings to specify multiple tags to include.
-     */
-    tags?: string;
-    /**
-     * How to format features (default: progress)
-     */
-    format?: string;
-    // Other options include `coffee`, `noSnippets`, and `dryRun`
-    coffee?: any;
-    noSnippets?: any;
-    dryRun?: any;
-  };
-
-  /**
    * See docs/plugins.md
    */
   plugins?: PluginConfig[];
@@ -605,7 +598,6 @@ export interface Config {
   v8Debug?: any;
   nodeDebug?: boolean;
   debuggerServerPort?: number;
-  useAllAngular2AppRoots?: boolean;
   frameworkPath?: string;
   elementExplorer?: any;
   debug?: boolean;

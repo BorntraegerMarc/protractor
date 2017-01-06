@@ -5,6 +5,7 @@
  */
 
 import * as q from 'q';
+import {Session, WebDriver} from 'selenium-webdriver';
 import * as util from 'util';
 
 import {Config} from '../config';
@@ -12,7 +13,7 @@ import {Logger} from '../logger';
 
 import {DriverProvider} from './driverProvider';
 
-let SauceLabs = require('saucelabs');
+const SauceLabs = require('saucelabs');
 
 let logger = new Logger('sauce');
 export class Sauce extends DriverProvider {
@@ -29,9 +30,9 @@ export class Sauce extends DriverProvider {
    * @return {q.promise} A promise that will resolve when the update is complete.
    */
   updateJob(update: any): q.Promise<any> {
-    var deferredArray = this.drivers_.map((driver: webdriver.WebDriver) => {
-      var deferred = q.defer();
-      driver.getSession().then((session: webdriver.Session) => {
+    let deferredArray = this.drivers_.map((driver: WebDriver) => {
+      let deferred = q.defer();
+      driver.getSession().then((session: Session) => {
         logger.info('SauceLabs results available at http://saucelabs.com/jobs/' + session.getId());
         this.sauceServer_.updateJob(session.getId(), update, (err: Error) => {
           if (err) {
@@ -51,13 +52,13 @@ export class Sauce extends DriverProvider {
    * @return {q.promise} A promise which will resolve when the environment is
    *     ready to test.
    */
-  setupEnv(): q.Promise<any> {
+  protected setupDriverEnv(): q.Promise<any> {
     let deferred = q.defer();
     this.sauceServer_ = new SauceLabs({
       username: this.config_.sauceUser,
       password: this.config_.sauceKey,
       agent: this.config_.sauceAgent,
-      proxy: this.config_.sauceProxy
+      proxy: this.config_.webDriverProxy
     });
     this.config_.capabilities['username'] = this.config_.sauceUser;
     this.config_.capabilities['accessKey'] = this.config_.sauceKey;

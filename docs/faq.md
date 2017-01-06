@@ -11,12 +11,12 @@ What's the difference between Karma and Protractor? When do I use which?
 ---------------------------------------------------
 
 [Karma](http://karma-runner.github.io) is a great tool for unit testing, and Protractor is intended for
-end to end or integration testing. This means that small tests for the logic
+end-to-end or integration testing. This means that small tests for the logic
 of your individual controllers, directives, and services should be run using
 Karma. Big tests in which you have a running instance of your entire application
 should be run using Protractor. Protractor is intended to run tests from a
 user's point of view - if your test could be written down as instructions
-for a human interacting with your application, it should be an end to end test
+for a human interacting with your application, it should be an end-to-end test
 written with Protractor.
 
 Here's a [great blog post](http://www.yearofmoo.com/2013/09/advanced-testing-and-debugging-in-angularjs.html)
@@ -50,6 +50,13 @@ The result of `getText` from an input element is always empty
 This is a [webdriver quirk](http://grokbase.com/t/gg/webdriver/12bcmvwhcm/extarcting-text-from-the-input-field).
 `<input>` and `<textarea>` elements always have
 empty `getText` values. Instead, try `element.getAttribute('value')`.
+
+How can I drag and drop elements?
+---------------------------------
+You can specify a sequence of [actions](http://www.protractortest.org/#/api?view=webdriver.WebDriver.prototype.actions)
+to drag an drop elements.  Note mouse actions do not work on Chrome with the HTML5 Drag and Drop API due to a known
+[Chromedriver issue](https://bugs.chromium.org/p/chromedriver/issues/detail?id=841)
+
 
 How can I interact directly with the JavaScript running in my app?
 ------------------------------------------------------------------

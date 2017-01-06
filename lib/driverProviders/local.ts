@@ -16,12 +16,13 @@ import {Logger} from '../logger';
 
 import {DriverProvider} from './driverProvider';
 
-let SeleniumConfig = require('webdriver-manager/built/lib/config').Config;
-let SeleniumChrome = require('webdriver-manager/built/lib/binaries/chrome_driver').ChromeDriver;
-let SeleniumStandAlone = require('webdriver-manager/built/lib/binaries/stand_alone').StandAlone;
-let remote = require('selenium-webdriver/remote');
+const SeleniumConfig = require('webdriver-manager/built/lib/config').Config;
+const SeleniumChrome = require('webdriver-manager/built/lib/binaries/chrome_driver').ChromeDriver;
+const SeleniumStandAlone = require('webdriver-manager/built/lib/binaries/stand_alone').StandAlone;
+const remote = require('selenium-webdriver/remote');
 
 let logger = new Logger('local');
+
 export class Local extends DriverProvider {
   server_: any;
   constructor(config: Config) {
@@ -38,22 +39,39 @@ export class Local extends DriverProvider {
       logger.debug(
           'Attempting to find the SeleniumServerJar in the default ' +
           'location used by webdriver-manager');
-      this.config_.seleniumServerJar = path.resolve(
-          SeleniumConfig.getSeleniumDir(), new SeleniumStandAlone().executableFilename());
+      try {
+        let updateJson = path.resolve(SeleniumConfig.getSeleniumDir(), 'update-config.json');
+        let updateConfig = JSON.parse(fs.readFileSync(updateJson).toString());
+        this.config_.seleniumServerJar = updateConfig.standalone.last;
+      } catch (err) {
+        throw new BrowserError(
+            logger,
+            'No update-config.json found.' +
+                ' Run \'webdriver-manager update\' to download binaries.');
+      }
     }
     if (!fs.existsSync(this.config_.seleniumServerJar)) {
       throw new BrowserError(
-          logger, 'No selenium server jar found at the specified ' +
-              'location (' + this.config_.seleniumServerJar +
-              '). Check that the version number is up to date.');
+          logger,
+          'No selenium server jar found at ' + this.config_.seleniumServerJar +
+              '. Run \'webdriver-manager update\' to download binaries.');
     }
     if (this.config_.capabilities.browserName === 'chrome') {
       if (!this.config_.chromeDriver) {
         logger.debug(
             'Attempting to find the chromedriver binary in the default ' +
             'location used by webdriver-manager');
-        this.config_.chromeDriver = path.resolve(
-            SeleniumConfig.getSeleniumDir(), new SeleniumChrome().executableFilename());
+
+        try {
+          let updateJson = path.resolve(SeleniumConfig.getSeleniumDir(), 'update-config.json');
+          let updateConfig = JSON.parse(fs.readFileSync(updateJson).toString());
+          this.config_.chromeDriver = updateConfig.chrome.last;
+        } catch (err) {
+          throw new BrowserError(
+              logger,
+              'No update-config.json found. ' +
+                  'Run \'webdriver-manager update\' to download binaries.');
+        }
       }
 
       // Check if file exists, if not try .exe or fail accordingly
@@ -62,7 +80,9 @@ export class Local extends DriverProvider {
           this.config_.chromeDriver += '.exe';
         } else {
           throw new BrowserError(
-              logger, 'Could not find chromedriver at ' + this.config_.chromeDriver);
+              logger,
+              'Could not find chromedriver at ' + this.config_.chromeDriver +
+                  '. Run \'webdriver-manager update\' to download binaries.');
         }
       }
     }
@@ -74,11 +94,10 @@ export class Local extends DriverProvider {
    * @return {q.promise} A promise which will resolve when the environment is
    *     ready to test.
    */
-  setupEnv(): q.Promise<any> {
+  setupDriverEnv(): q.Promise<any> {
     let deferred = q.defer();
 
     this.addDefaultBinaryLocs_();
-
     logger.info('Starting selenium standalone server...');
 
     let serverConf = this.config_.localSeleniumStandaloneOpts || {};
@@ -103,7 +122,7 @@ export class Local extends DriverProvider {
     this.server_ = new remote.SeleniumServer(this.config_.seleniumServerJar, serverConf);
 
     // start local server, grab hosted address, and resolve promise
-    this.server_.start().then((url: string) => {
+    this.server_.start(this.config_.seleniumServerStartTimeout).then((url: string) => {
       logger.info('Selenium standalone server started at ' + url);
       this.server_.address().then((address: string) => {
         this.config_.seleniumAddress = address;

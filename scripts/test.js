@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+var path = require('path');
 
 var Executor = require('./test/test_util').Executor;
 
 var passingTests = [
   'node built/cli.js spec/basicConf.js',
+  'node built/cli.js spec/basicConf.js --useBlockingProxy',
   'node built/cli.js spec/multiConf.js',
   'node built/cli.js spec/altRootConf.js',
+  'node built/cli.js spec/inferRootConf.js',
   'node built/cli.js spec/onCleanUpAsyncReturnValueConf.js',
   'node built/cli.js spec/onCleanUpNoReturnValueConf.js',
   'node built/cli.js spec/onCleanUpSyncReturnValueConf.js',
@@ -36,7 +39,8 @@ var passingTests = [
   'node built/cli.js spec/angular2Conf.js',
   'node built/cli.js spec/hybridConf.js',
   'node scripts/driverProviderAttachSession.js',
-  'node scripts/exitCodes.js',
+  'node scripts/errorTest.js',
+  // Interactive Element Explorer tasks
   'node scripts/interactive_tests/interactive_test.js',
   'node scripts/interactive_tests/with_base_url.js',
   // Unit tests
@@ -142,4 +146,9 @@ executor.addCommandlineTest('node built/cli.js spec/angular2TimeoutConf.js')
       {message: 'Timed out waiting for asynchronous Angular tasks to finish'},
     ]);
 
-executor.execute();
+// If we're running on CircleCI, save stdout and stderr from the test run to a log file.
+if (process.env['CIRCLE_ARTIFACTS']) {
+  executor.execute(path.join(process.env['CIRCLE_ARTIFACTS'], 'test_log.txt'));
+} else {
+  executor.execute();
+}

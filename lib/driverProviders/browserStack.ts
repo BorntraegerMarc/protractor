@@ -5,6 +5,7 @@
  */
 import * as https from 'https';
 import * as q from 'q';
+import {Session, WebDriver} from 'selenium-webdriver';
 import * as util from 'util';
 
 import {Config} from '../config';
@@ -27,9 +28,9 @@ export class BrowserStack extends DriverProvider {
    * @return {q.promise} A promise that will resolve when the update is complete.
    */
   updateJob(update: any): q.Promise<any> {
-    let deferredArray = this.drivers_.map((driver: webdriver.WebDriver) => {
+    let deferredArray = this.drivers_.map((driver: WebDriver) => {
       let deferred = q.defer();
-      driver.getSession().then((session: webdriver.Session) => {
+      driver.getSession().then((session: Session) => {
         let headers: Object = {
           'Content-Type': 'application/json',
           'Authorization': 'Basic ' +
@@ -46,7 +47,7 @@ export class BrowserStack extends DriverProvider {
 
         let req = https.request(options, (res) => {
           res.on('data', (data: Buffer) => {
-            var info = JSON.parse(data.toString());
+            let info = JSON.parse(data.toString());
             if (info && info.automation_session && info.automation_session.browser_url) {
               logger.info(
                   'BrowserStack results available at ' + info.automation_session.browser_url);
@@ -89,12 +90,11 @@ export class BrowserStack extends DriverProvider {
 
   /**
    * Configure and launch (if applicable) the object's environment.
-   * @public
    * @return {q.promise} A promise which will resolve when the environment is
    *     ready to test.
    */
-  setupEnv(): q.Promise<any> {
-    var deferred = q.defer();
+  protected setupDriverEnv(): q.Promise<any> {
+    let deferred = q.defer();
     this.config_.capabilities['browserstack.user'] = this.config_.browserstackUser;
     this.config_.capabilities['browserstack.key'] = this.config_.browserstackKey;
     this.config_.seleniumAddress = 'http://hub.browserstack.com/wd/hub';

@@ -1,20 +1,17 @@
 var env = require('./environment.js');
 
-// Test that onCleanUp actions are performed.
+// Tests for an Angular app where ng-app is not on the body.
 exports.config = {
-  mockSelenium: true,
+  seleniumAddress: env.seleniumAddress,
 
   framework: 'jasmine',
 
+  // Spec patterns are relative to this config.
   specs: [
-    'onCleanUp/*_spec.js'
+    'altRoot/*_spec.js'
   ],
 
   capabilities: env.capabilities,
 
   baseUrl: env.baseUrl + '/ng1/',
-
-  onCleanUp: function(/* exitCode */) {
-    // no return
-  }
 };
